@@ -33,39 +33,66 @@
 
 set -euo pipefail
 
+# Base raw URL used to self-bootstrap modules when lib/ isn't present locally
+# (e.g. when only install.sh was downloaded, or piped via curl | bash).
+EREGISTER_RAW_BASE="${EREGISTER_RAW_BASE:-https://raw.githubusercontent.com/eRegister/upgrade-to-v1/refs/heads/main}"
+BOOTSTRAP_DIR=""   # temp dir holding downloaded modules; cleaned up on EXIT
+
+# Modules to source, in dependency order (core -> system -> upgrade). Everything
+# but config.sh only *defines* functions, so order is otherwise flexible.
+EREGISTER_MODULES=(
+  core/config.sh
+  core/logging.sh
+  core/traps.sh
+  core/prompt.sh
+  core/cli.sh
+  system/platform.sh
+  system/privilege.sh
+  system/deps.sh
+  upgrade/verify.sh
+  upgrade/detect.sh
+  upgrade/backup.sh
+  upgrade/migrate.sh
+  upgrade/rollback.sh
+  upgrade/postinstall.sh
+)
+
 # -----------------------------------------------------------------------------
-# Module loader — resolve lib/ relative to this script and source every module.
-# Sourcing order follows dependency layering (core -> system -> upgrade); since
-# everything but config.sh only *defines* functions, order is otherwise flexible.
+# bootstrap_modules — download all modules into a temp dir when lib/ is absent.
+# Echoes the temp dir path on stdout; logs to stderr (loggers aren't loaded yet).
+# -----------------------------------------------------------------------------
+bootstrap_modules() {
+  local tmp m url
+  command -v curl >/dev/null 2>&1 || { printf 'FATAL: curl required to fetch modules.\n' >&2; return 1; }
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/eregister-lib.XXXXXX")" || return 1
+  printf 'lib/ not found locally — downloading modules from %s …\n' "$EREGISTER_RAW_BASE" >&2
+  for m in "${EREGISTER_MODULES[@]}"; do
+    mkdir -p "${tmp}/$(dirname "$m")"
+    url="${EREGISTER_RAW_BASE}/lib/${m}"
+    if ! curl -fsSL "$url" -o "${tmp}/${m}"; then
+      printf 'FATAL: could not download module: %s\n' "$url" >&2
+      rm -rf "$tmp"
+      return 1
+    fi
+  done
+  printf '%s' "$tmp"
+}
+
+# -----------------------------------------------------------------------------
+# Module loader — prefer lib/ next to this script; otherwise self-bootstrap.
 # -----------------------------------------------------------------------------
 load_modules() {
   local self_dir lib_dir m
-  self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  lib_dir="${EREGISTER_LIB_DIR:-${self_dir}/lib}"
+  # When piped (curl | bash) BASH_SOURCE may not be a real path; tolerate that.
+  self_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd)" || self_dir=""
+  lib_dir="${EREGISTER_LIB_DIR:-${self_dir:+${self_dir}/lib}}"
 
-  if [ ! -d "$lib_dir" ]; then
-    printf 'FATAL: module dir not found: %s\n' "$lib_dir" >&2
-    printf 'Clone the whole repo and run ./install.sh, or set EREGISTER_LIB_DIR.\n' >&2
-    exit 1
+  if [ -z "$lib_dir" ] || [ ! -d "$lib_dir" ]; then
+    lib_dir="$(bootstrap_modules)" || exit 1
+    BOOTSTRAP_DIR="$lib_dir"   # mark for cleanup (see cleanup() in traps.sh)
   fi
 
-  local modules=(
-    core/config.sh
-    core/logging.sh
-    core/traps.sh
-    core/prompt.sh
-    core/cli.sh
-    system/platform.sh
-    system/privilege.sh
-    system/deps.sh
-    upgrade/verify.sh
-    upgrade/detect.sh
-    upgrade/backup.sh
-    upgrade/migrate.sh
-    upgrade/rollback.sh
-    upgrade/postinstall.sh
-  )
-  for m in "${modules[@]}"; do
+  for m in "${EREGISTER_MODULES[@]}"; do
     if [ ! -r "${lib_dir}/${m}" ]; then
       printf 'FATAL: missing module: %s/%s\n' "$lib_dir" "$m" >&2
       exit 1

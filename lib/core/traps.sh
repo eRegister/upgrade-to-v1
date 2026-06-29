@@ -13,8 +13,10 @@ on_error() {
 }
 
 cleanup() {
-  # Always remove the temp working dir; never touch install/backup dirs here.
-  [ -n "${WORKDIR:-}" ] && [ -d "$WORKDIR" ] && rm -rf "$WORKDIR" || true
+  # Always remove the temp working dir and any downloaded-modules temp dir;
+  # never touch install/backup dirs here.
+  [ -n "${WORKDIR:-}" ]       && [ -d "$WORKDIR" ]       && rm -rf "$WORKDIR"       || true
+  [ -n "${BOOTSTRAP_DIR:-}" ] && [ -d "$BOOTSTRAP_DIR" ] && rm -rf "$BOOTSTRAP_DIR" || true
 }
 
 install_traps() {
