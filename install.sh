@@ -408,10 +408,11 @@ take_backup() {
 rollback() {
   warn "Upgrade failed — initiating rollback to ${APP_NAME} ${CURRENT_VERSION_DEFAULT}."
   if [ -f "${OLD_DOCKER_DIR}/docker-compose.yml" ]; then
-    info "Bringing the old stack back up (${OLD_DOCKER_DIR})…"
-    ( cd "$OLD_DOCKER_DIR" && as_root $DOCKER_COMPOSE up -d ) \
+    info "Restarting the frozen old stack (${OLD_DOCKER_DIR})…"
+    # Containers were only 'stop'ped, so 'start' brings them back as-is.
+    ( cd "$OLD_DOCKER_DIR" && as_root $DOCKER_COMPOSE start ) \
       && success "Old stack restarted." \
-      || error "Could not restart old stack automatically — start it manually in ${OLD_DOCKER_DIR}."
+      || error "Could not restart old stack automatically — run '$DOCKER_COMPOSE start' in ${OLD_DOCKER_DIR}."
   else
     error "Old compose file not found at ${OLD_DOCKER_DIR}; cannot auto-rollback the stack."
   fi
@@ -426,9 +427,12 @@ shutdown_old_stack() {
   log ""
   info "Shutting down ${APP_NAME} ${CURRENT_VERSION_DEFAULT}"
   if [ -f "${OLD_DOCKER_DIR}/docker-compose.yml" ]; then
-    ( cd "$OLD_DOCKER_DIR" && as_root $DOCKER_COMPOSE down )
+    # 'stop' (not 'down') freezes the containers in place — they are halted but
+    # NOT removed, so volumes/networks stay intact and rollback is a fast
+    # 'start' with no re-create. Then continue straight on with the upgrade.
+    ( cd "$OLD_DOCKER_DIR" && as_root $DOCKER_COMPOSE stop )
     OLD_STACK_STOPPED="1"
-    success "Old stack stopped."
+    success "Old stack stopped (containers frozen, not removed)."
   else
     warn "No docker-compose.yml at ${OLD_DOCKER_DIR}; nothing to shut down."
   fi
