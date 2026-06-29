@@ -1,0 +1,47 @@
+# shellcheck shell=bash
+# =============================================================================
+# lib/core/cli.sh — argument parsing, config resolution, summary
+# Depends on: logging, read_current_version() (lib/upgrade/detect.sh).
+# =============================================================================
+usage() { sed -n '2,40p' "$0" 2>/dev/null || true; }
+
+parse_args() {
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -y|--yes)       ASSUME_YES="1" ;;
+      --force)        FORCE="1" ;;
+      --install-dir)  INSTALL_BASE="${2:?--install-dir needs a value}"; shift ;;
+      --target-ref)   TARGET_REF="${2:?--target-ref needs a value}"; shift ;;
+      --no-color)     USE_COLOR="no" ;;
+      -h|--help)      usage; exit 0 ;;
+      *) error "Unknown argument: $1"; usage; exit 2 ;;
+    esac
+    shift
+  done
+}
+
+resolve_config() {
+  V1_DIR="${INSTALL_BASE}/v1"
+  BACKUP_DIR="${V1_DIR}/bahmni-backup"
+  BACKUP_SQL="${BACKUP_DIR}/openmrsdb_backup.sql"
+  DONE_MARKER="${V1_DIR}/.eregister-upgrade-complete"
+  RESTORE_DIR="${V1_DIR}/bahmni-docker-ls/bahmni-standard"
+}
+
+print_config() {
+  local current; current="$(read_current_version)"
+  step "Resolved configuration"
+  cat >&2 <<EOF
+  ${C_DIM}App${C_RESET}            : ${APP_NAME}
+  ${C_DIM}Current ver${C_RESET}    : ${current}
+  ${C_DIM}Target ver${C_RESET}     : ${TARGET_VERSION}  (ref: ${TARGET_REF})
+  ${C_DIM}OS / Arch${C_RESET}      : ${OS} / ${ARCH}
+  ${C_DIM}Pkg manager${C_RESET}    : ${PKG_MGR:-none}
+  ${C_DIM}Install base${C_RESET}   : ${INSTALL_BASE}
+  ${C_DIM}v1 dir${C_RESET}         : ${V1_DIR}
+  ${C_DIM}Old stack${C_RESET}      : ${OLD_DOCKER_DIR}
+  ${C_DIM}EMR container${C_RESET}  : ${EMR_CONTAINER}
+  ${C_DIM}Privilege${C_RESET}      : $( [ -n "$SUDO" ] && echo "sudo" || echo "direct" )
+  ${C_DIM}Non-interactive${C_RESET}: $( [ "$ASSUME_YES" = "1" ] && echo "yes" || echo "no" )
+EOF
+}
