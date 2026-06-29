@@ -37,3 +37,24 @@ run_restore() {
   ( cd "$RESTORE_DIR" && as_root ./restore_bahmni_standard.sh "$BACKUP_DIR" )
   success "Restore completed."
 }
+
+start_v1_stack() {
+  # Bring up eRegister v1: prefer run-bahmni.sh; if it errors (or is missing),
+  # fall back to a plain 'docker compose up -d'. The run-bahmni.sh call is in an
+  # 'if' so a non-zero exit triggers the fallback instead of the ERR trap.
+  step "Starting eRegister ${TARGET_VERSION}"
+  local run_script="${RESTORE_DIR}/run-bahmni.sh"
+  if [ -f "$run_script" ]; then
+    as_root chmod +x "$run_script" || true
+    info "Launching via run-bahmni.sh…"
+    if ( cd "$RESTORE_DIR" && as_root ./run-bahmni.sh ); then
+      success "eRegister ${TARGET_VERSION} started via run-bahmni.sh."
+      return 0
+    fi
+    warn "run-bahmni.sh returned an error — falling back to '${DOCKER_COMPOSE} up -d'."
+  else
+    warn "run-bahmni.sh not found in ${RESTORE_DIR}; using '${DOCKER_COMPOSE} up -d'."
+  fi
+  ( cd "$RESTORE_DIR" && as_root $DOCKER_COMPOSE up -d )
+  success "eRegister ${TARGET_VERSION} started via docker compose."
+}

@@ -141,6 +141,10 @@ main() {
   confirm_step "Run restore_bahmni_standard.sh to load the backup into the v1 stack"
   run_restore
 
+  # --- start the v1 stack -------------------------------------------------
+  confirm_step "Start eRegister ${TARGET_VERSION} via run-bahmni.sh (falls back to '${DOCKER_COMPOSE} up -d' on error)"
+  start_v1_stack
+
   # --- verify & finish ----------------------------------------------------
   confirm_step "Run post-install verification and finalize the upgrade"
   post_verify
