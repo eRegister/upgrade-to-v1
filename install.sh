@@ -156,6 +156,22 @@ confirm() {
   case "$reply" in [yY]|[yY][eE][sS]) return 0 ;; *) return 1 ;; esac
 }
 
+confirm_step() {
+  # Gate a single migration step. Declining aborts cleanly — and if the old
+  # stack was already frozen, it rolls back first so you are never left in a
+  # half-upgraded state. Honors --yes / EREGISTER_ASSUME_YES (auto-confirms).
+  local what="$1"
+  if confirm "Next step: ${what} — proceed?"; then
+    return 0
+  fi
+  warn "Step declined by user: ${what}"
+  if [ "$OLD_STACK_STOPPED" = "1" ] && [ "$UPGRADE_COMPLETE" != "1" ]; then
+    rollback
+  fi
+  error "Upgrade aborted by user before completion. No further changes made."
+  exit 1
+}
+
 prompt_db_password() {
   # Obtain the OpenMRS DB password without ever reading from the script's stdin.
   # Priority: 1) EREGISTER_DB_PASS env var, 2) silent prompt from /dev/tty.
@@ -566,40 +582,48 @@ main() {
     exit 0
   fi
 
-  # --- confirm destructive migration -------------------------------------
-  if ! confirm "Proceed with upgrade ${CURRENT_VERSION_DEFAULT} -> ${TARGET_VERSION} (stops the running stack)?"; then
+  # --- overall go/no-go (each step below is also confirmed individually) --
+  warn "Cautious mode: you will be asked to confirm EVERY step before it runs."
+  warn "Answer 'n' at any prompt to stop safely (with rollback if the old stack"
+  warn "has already been frozen). Use --yes to auto-confirm all steps."
+  if ! confirm "Begin the upgrade ${CURRENT_VERSION_DEFAULT} -> ${TARGET_VERSION}?"; then
     error "Aborted by user."
     exit 1
   fi
 
   # --- dependencies -------------------------------------------------------
+  confirm_step "Check for, and install if missing, required dependencies (git, docker, …)"
   ensure_deps
 
-  # --- temp workspace -----------------------------------------------------
+  # --- temp workspace + scaffolding --------------------------------------
+  confirm_step "Create the temp workspace and the v1 folders under ${INSTALL_BASE}"
   WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/eregister-v1.XXXXXX")"
   info "Working dir: ${WORKDIR}"
-
-  # --- scaffolding --------------------------------------------------------
   step "Preparing directories"
   ensure_dir "$V1_DIR" "v1 folder"
   ensure_dir "$BACKUP_DIR" "bahmni-backup folder"
 
   # --- backup BEFORE touching anything ------------------------------------
   step "Backup"
+  confirm_step "Take a MySQL backup of '${DB_NAME}' from container ${EMR_CONTAINER} into ${BACKUP_SQL}"
   prompt_db_password
   take_backup
 
   # --- stop old stack (rollback armed from here) --------------------------
   step "Migration"
+  confirm_step "Freeze (stop, not remove) the running ${CURRENT_VERSION_DEFAULT} stack at ${OLD_DOCKER_DIR}"
   shutdown_old_stack
 
   # --- bring in v1 sources & 0.92 config ----------------------------------
+  confirm_step "Clone the v1 source repos and 0.92 config into ${V1_DIR}"
   fetch_repos
 
   # --- restore data into v1 ----------------------------------------------
+  confirm_step "Run restore_bahmni_standard.sh to load the backup into the v1 stack"
   run_restore
 
   # --- verify & finish ----------------------------------------------------
+  confirm_step "Run post-install verification and finalize the upgrade"
   post_verify
   UPGRADE_COMPLETE="1"   # disarms rollback in the error trap
   next_steps
