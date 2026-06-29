@@ -4,6 +4,10 @@ To run this script, just copy and paste this line below in your terminal:
 
 # Refactoring it so that I can maintain it better
 
+The functions are split into modules under `lib/`, grouped by concern. Only
+`main()` and the module loader live in `install.sh`.
+
+```text
 install.sh                       # header + load_modules() + main() + main "$@"
 lib/
 ├── core/
@@ -23,3 +27,4 @@ lib/
     ├── migrate.sh               # shutdown_old_stack, fetch_repos, run_restore
     ├── rollback.sh              # rollback
     └── postinstall.sh           # post_verify, next_steps
+```
