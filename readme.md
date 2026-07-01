@@ -1,7 +1,7 @@
 To run this script, just copy and paste this line below in your terminal:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/eRegister/upgrade-to-v1/refs/heads/main/install.sh -o install.sh
+curl -fsSL https://raw.githubusercontent.com/eRegister/upgrade-to-v1/refs/heads/main/install.sh | bash
 ```
 
 # Refactoring it so that I can maintain it better
