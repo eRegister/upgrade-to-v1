@@ -21,10 +21,10 @@ shutdown_old_stack() {
 
 fetch_repos() {
   step "Fetching v1 sources"
-  git_clone_or_update "$REPO_BAHMNI_DOCKER"   "${V1_DIR}/bahmni-docker-ls"
-  git_clone_or_update "$REPO_STANDARD_CONFIG" "${V1_DIR}/standard-config-ls"
+  git_clone_or_update "$REPO_BAHMNI_DOCKER"   "${V1_DIR}/bahmni-docker-ls"    "$REF_BAHMNI_DOCKER"
+  git_clone_or_update "$REPO_STANDARD_CONFIG" "${V1_DIR}/standard-config-ls"  "$REF_STANDARD_CONFIG"
   # 0.92 config goes alongside the backup and is renamed to bahmni_config.
-  git_clone_or_update "$REPO_CONFIG_092"      "${BACKUP_DIR}/bahmni_config"
+  git_clone_or_update "$REPO_CONFIG_092"      "${BACKUP_DIR}/bahmni_config"   "$REF_CONFIG_092"
 }
 
 run_restore() {

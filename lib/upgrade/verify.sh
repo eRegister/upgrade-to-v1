@@ -28,18 +28,20 @@ verify_gpg() {
 }
 
 git_clone_or_update() {
-  # Idempotent clone; verifies the remote and checks out TARGET_REF.
-  # git_clone_or_update <repo_url> <dest_dir>
-  local url="$1" dest="$2"
+  # Idempotent clone; verifies the remote and checks out the requested ref.
+  # git_clone_or_update <repo_url> <dest_dir> <ref>
+  # A non-empty global TARGET_REF overrides the per-repo <ref>.
+  local url="$1" dest="$2" ref="${TARGET_REF:-$3}"
+  [ -n "$ref" ] || { error "No git ref specified for ${url}."; return 1; }
   if [ -d "$dest/.git" ]; then
-    info "Repo exists, updating: ${dest}"
+    info "Repo exists, updating: ${dest} @ ${ref}"
     as_root git -C "$dest" remote set-url origin "$url"
-    as_root git -C "$dest" fetch --depth 1 origin "$TARGET_REF"
-    as_root git -C "$dest" checkout -f "$TARGET_REF"
-    as_root git -C "$dest" reset --hard "origin/${TARGET_REF}" 2>/dev/null || true
+    as_root git -C "$dest" fetch --depth 1 origin "$ref"
+    as_root git -C "$dest" checkout -f "$ref"
+    as_root git -C "$dest" reset --hard "origin/${ref}" 2>/dev/null || true
   else
-    info "Cloning ${url} -> ${dest}"
-    as_root git clone --depth 1 --branch "$TARGET_REF" "$url" "$dest" 2>/dev/null \
+    info "Cloning ${url} @ ${ref} -> ${dest}"
+    as_root git clone --depth 1 --branch "$ref" "$url" "$dest" 2>/dev/null \
       || as_root git clone "$url" "$dest"
   fi
   [ -d "$dest/.git" ] || { error "Clone failed: ${dest}"; return 1; }

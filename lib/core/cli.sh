@@ -34,7 +34,8 @@ print_config() {
   cat >&2 <<EOF
   ${C_DIM}App${C_RESET}            : ${APP_NAME}
   ${C_DIM}Current ver${C_RESET}    : ${current}
-  ${C_DIM}Target ver${C_RESET}     : ${TARGET_VERSION}  (ref: ${TARGET_REF})
+  ${C_DIM}Target ver${C_RESET}     : ${TARGET_VERSION}$( [ -n "$TARGET_REF" ] && echo "  (ref override: ${TARGET_REF})" )
+  ${C_DIM}Refs${C_RESET}           : docker=${TARGET_REF:-$REF_BAHMNI_DOCKER}  config=${TARGET_REF:-$REF_STANDARD_CONFIG}  092=${TARGET_REF:-$REF_CONFIG_092}
   ${C_DIM}OS / Arch${C_RESET}      : ${OS} / ${ARCH}
   ${C_DIM}Pkg manager${C_RESET}    : ${PKG_MGR:-none}
   ${C_DIM}Install base${C_RESET}   : ${INSTALL_BASE}

@@ -9,7 +9,9 @@ CURRENT_VERSION_DEFAULT="0.92"        # assumed version of an existing install
 TARGET_VERSION="v1"
 
 INSTALL_BASE="${EREGISTER_INSTALL_BASE:-/var/lib}"   # default install dir
-TARGET_REF="${EREGISTER_TARGET_REF:-main}"           # git ref to deploy
+# Global ref override: when non-empty, forces this git ref for ALL repos.
+# Empty = use the per-repo defaults below (repos don't share a branch name).
+TARGET_REF="${EREGISTER_TARGET_REF:-}"
 ASSUME_YES="${EREGISTER_ASSUME_YES:-0}"
 FORCE="0"
 USE_COLOR="auto"
@@ -29,6 +31,13 @@ DB_PASS="${EREGISTER_DB_PASS:-}"
 REPO_BAHMNI_DOCKER="https://github.com/Lesotho-eRegister-v1/bahmni-docker-ls"
 REPO_STANDARD_CONFIG="https://github.com/Lesotho-eRegister-v1/standard-config-ls"
 REPO_CONFIG_092="https://github.com/eRegister/bahmni_config092"
+
+# Per-repo git refs (branch/tag/sha). The Lesotho repos have no 'main' branch;
+# their v1 line lives on 'Bokang-changes'. config092 uses 'main'.
+# A non-empty TARGET_REF (global override) supersedes all of these.
+REF_BAHMNI_DOCKER="${EREGISTER_REF_BAHMNI_DOCKER:-Bokang-changes}"
+REF_STANDARD_CONFIG="${EREGISTER_REF_STANDARD_CONFIG:-Bokang-changes}"
+REF_CONFIG_092="${EREGISTER_REF_CONFIG_092:-main}"
 
 # Derived paths (finalized in resolve_config once INSTALL_BASE is known)
 V1_DIR=""             # <base>/v1
