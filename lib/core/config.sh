@@ -16,7 +16,7 @@ USE_COLOR="auto"
 
 # Existing (0.92) deployment layout
 OLD_DOCKER_DIR="${EREGISTER_OLD_DOCKER_DIR:-/home/ubuntu/bahmni_docker}"
-EMR_CONTAINER="${EREGISTER_EMR_CONTAINER:-bahmni_docker_emr-service_1}"
+EMR_CONTAINER="${EREGISTER_EMR_CONTAINER:-bahmni_docker-emr-service-1}"
 
 # OpenMRS DB credentials (used inside the running EMR container for the dump).
 # The password is NOT hard-coded: it is prompted interactively at runtime, or
