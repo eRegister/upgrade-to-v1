@@ -4,6 +4,21 @@ To run this script, just copy and paste this line below in your terminal:
 curl -fsSL https://raw.githubusercontent.com/eRegister/upgrade-to-v1/refs/heads/main/install.sh | bash
 ```
 
+  What to do next:
+    1. cd /var/lib/v1/bahmni-docker-ls/bahmni-standard
+    2. Confirm services are healthy:
+         docker compose ps
+    3. If anything is down, bring it up with:
+         docker compose up -d
+    4. After the instance is FULLY up and the OCL import has finished
+       (~30+ min), apply the OCL concept-name fix (run once):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/eRegister/upgrade-to-v1/refs/heads/main/ocl-fix.sh | bash
+```
+    (or, from the upgrade repo:  ./ocl-fix.sh)
+    5. Once verified, the old install in /home/kgatman/bahmni_docker can be archived.
+    
 # Refactoring it so that I can maintain it better
 
 The functions are split into modules under `lib/`, grouped by concern. Only
