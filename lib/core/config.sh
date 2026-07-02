@@ -34,6 +34,9 @@ DB_PASS="${EREGISTER_DB_PASS:-}"
 DB_SERVICE="${EREGISTER_DB_SERVICE:-openmrsdb}"
 EMR_SERVICE="${EREGISTER_EMR_SERVICE:-openmrs}"
 OCL_DIR="${EREGISTER_OCL_DIR:-/openmrs/data/configuration/ocl}"
+# Reports runs as its own compose service (often behind a 'reports' profile);
+# started explicitly after the main stack comes up.
+REPORTS_SERVICE="${EREGISTER_REPORTS_SERVICE:-reports}"
 
 # Raw base for self-bootstrapping the standalone helpers (kept in sync with the
 # same default in install.sh / ocl-fix.sh).
