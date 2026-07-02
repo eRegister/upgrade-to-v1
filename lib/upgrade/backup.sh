@@ -26,10 +26,19 @@ take_backup() {
     warn "Backup already exists: ${BACKUP_SQL} (use --force to overwrite). Keeping it."
   else
     # MYSQL_PWD keeps the password off the container's process list.
+    # Dump EVERYTHING in the openmrs db so the restore is self-contained:
+    #   --single-transaction  consistent InnoDB snapshot without locking writers
+    #   --routines            stored procedures & functions
+    #   --triggers            table triggers
+    #   --events              scheduled events
+    #   --databases           emit CREATE DATABASE / USE so the db is recreated
+    #   --hex-blob            binary-safe encoding of BLOB/BINARY columns
+    #   --default-character-set=utf8mb4  no truncation/corruption of unicode text
     # Stream the dump out and write it host-side (as root for /var/lib).
     docker exec -e "MYSQL_PWD=${DB_PASS}" "$EMR_CONTAINER" \
-      mysqldump --single-transaction --routines --triggers \
-                -u "$DB_USER" "$DB_NAME" \
+      mysqldump --single-transaction --routines --triggers --events \
+                --hex-blob --default-character-set=utf8mb4 \
+                --databases -u "$DB_USER" "$DB_NAME" \
       | as_root tee "$BACKUP_SQL" >/dev/null
     [ -s "$BACKUP_SQL" ] || { error "Backup file is empty: ${BACKUP_SQL}"; return 1; }
   fi
