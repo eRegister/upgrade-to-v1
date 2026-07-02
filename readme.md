@@ -4,6 +4,12 @@ To run this script, just copy and paste this line below in your terminal:
 curl -fsSL https://raw.githubusercontent.com/eRegister/upgrade-to-v1/refs/heads/main/install.sh | bash
 ```
 
+An example of how to use flags below:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/eRegister/upgrade-to-v1/refs/heads/main/install.sh | bash -s -- --force --yes
+```
+
 What to do next:
 1. cd /var/lib/v1/bahmni-docker-ls/bahmni-standard
 2. Confirm services are healthy:
