@@ -16,9 +16,14 @@ post_verify() {
 }
 
 next_steps() {
-  local backup_size
-  backup_size="$(as_root du -h "$BACKUP_SQL" 2>/dev/null | awk '{print $1}')"
+  local backup_size dc
+  # '|| true' so a missing/unreadable backup never aborts next_steps under set -e.
+  backup_size="$(as_root du -h "$BACKUP_SQL" 2>/dev/null | awk '{print $1}' || true)"
   [ -n "$backup_size" ] && backup_size=" (${backup_size})"
+  # DOCKER_COMPOSE is only resolved in ensure_deps, which the "already installed"
+  # early-exit path skips — fall back to a sensible default so the printed
+  # commands are never blank.
+  dc="${DOCKER_COMPOSE:-docker compose}"
   cat >&2 <<EOF
 
 ${C_OK}══════════════════════════════════════════════════════════════${C_RESET}
@@ -29,15 +34,19 @@ ${C_OK}════════════════════════�
   DB backup   : ${BACKUP_SQL}${backup_size}
   v1 stack    : ${V1_DIR}/bahmni-docker-ls
 
-  The v1 stack has been started (run-bahmni.sh, or '${DOCKER_COMPOSE} up -d').
+  The v1 stack has been started (run-bahmni.sh, or '${dc} up -d').
 
   What to do next:
     1. cd ${V1_DIR}/bahmni-docker-ls/bahmni-standard
     2. Confirm services are healthy:
-         ${DOCKER_COMPOSE} ps
+         ${dc} ps
     3. If anything is down, bring it up with:
-         ${DOCKER_COMPOSE} up -d
-    4. Once verified, the old install in ${OLD_DOCKER_DIR} can be archived.
+         ${dc} up -d
+    4. After the instance is FULLY up and the OCL import has finished
+       (~30+ min), apply the OCL concept-name fix (run once):
+         curl -fsSL ${RAW_BASE}/ocl-fix.sh | bash
+       (or, from the upgrade repo:  ./ocl-fix.sh)
+    5. Once verified, the old install in ${OLD_DOCKER_DIR} can be archived.
 
   Re-running this script is safe (idempotent). Use --force to redo a
   completed upgrade.

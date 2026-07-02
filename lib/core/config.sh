@@ -27,6 +27,18 @@ DB_NAME="${EREGISTER_DB_NAME:-openmrs}"
 DB_USER="${EREGISTER_DB_USER:-root}"
 DB_PASS="${EREGISTER_DB_PASS:-}"
 
+# v1 (target) stack — compose service names + the OCL config dir *inside* the
+# EMR service. Used by the post-startup OCL concept-name fix (ocl-fix.sh).
+# The v1 DB password is normally the container's own MYSQL_ROOT_PASSWORD; set
+# EREGISTER_DB_PASS only if it differs.
+DB_SERVICE="${EREGISTER_DB_SERVICE:-openmrsdb}"
+EMR_SERVICE="${EREGISTER_EMR_SERVICE:-openmrs}"
+OCL_DIR="${EREGISTER_OCL_DIR:-/openmrs/data/configuration/ocl}"
+
+# Raw base for self-bootstrapping the standalone helpers (kept in sync with the
+# same default in install.sh / ocl-fix.sh).
+RAW_BASE="${EREGISTER_RAW_BASE:-https://raw.githubusercontent.com/eRegister/upgrade-to-v1/refs/heads/main}"
+
 # Source repositories
 REPO_BAHMNI_DOCKER="https://github.com/Lesotho-eRegister-v1/bahmni-docker-ls"
 REPO_STANDARD_CONFIG="https://github.com/Lesotho-eRegister-v1/standard-config-ls"
