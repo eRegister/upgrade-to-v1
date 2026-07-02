@@ -16,6 +16,9 @@ post_verify() {
 }
 
 next_steps() {
+  local backup_size
+  backup_size="$(as_root du -h "$BACKUP_SQL" 2>/dev/null | awk '{print $1}')"
+  [ -n "$backup_size" ] && backup_size=" (${backup_size})"
   cat >&2 <<EOF
 
 ${C_OK}══════════════════════════════════════════════════════════════${C_RESET}
@@ -23,7 +26,7 @@ ${C_OK} ✔ ${APP_NAME} upgraded to ${TARGET_VERSION}${C_RESET}
 ${C_OK}══════════════════════════════════════════════════════════════${C_RESET}
 
   Install dir : ${V1_DIR}
-  DB backup   : ${BACKUP_SQL}
+  DB backup   : ${BACKUP_SQL}${backup_size}
   v1 stack    : ${V1_DIR}/bahmni-docker-ls
 
   The v1 stack has been started (run-bahmni.sh, or '${DOCKER_COMPOSE} up -d').
@@ -38,5 +41,9 @@ ${C_OK}════════════════════════�
 
   Re-running this script is safe (idempotent). Use --force to redo a
   completed upgrade.
+
+${C_ERR}  ⚠ Please wait ~30+ minutes before using eRegister. The v1 services
+    need time to fully start up, and this can take considerably longer
+    depending on the server hardware hosting eRegister.${C_RESET}
 EOF
 }
