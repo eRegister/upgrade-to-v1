@@ -15,7 +15,8 @@ What to do next:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/eRegister/upgrade-to-v1/refs/heads/main/ocl-fix.sh | bash
 ```
-    (or, from the upgrade repo:  ./ocl-fix.sh)
+(or, from the upgrade repo:  ./ocl-fix.sh)
+
 5. Once verified, the old install in /home/kgatman/bahmni_docker can be archived.
 
 # Refactoring it so that I can maintain it better
