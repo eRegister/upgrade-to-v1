@@ -43,18 +43,36 @@ start_v1_stack() {
   # fall back to a plain 'docker compose up -d'. The run-bahmni.sh call is in an
   # 'if' so a non-zero exit triggers the fallback instead of the ERR trap.
   step "Starting eRegister ${TARGET_VERSION}"
-  local run_script="${RESTORE_DIR}/run-bahmni.sh"
+  local run_script="${RESTORE_DIR}/run-bahmni.sh" started=0
   if [ -f "$run_script" ]; then
     as_root chmod +x "$run_script" || true
     info "Launching via run-bahmni.sh…"
     if ( cd "$RESTORE_DIR" && as_root ./run-bahmni.sh ); then
       success "eRegister ${TARGET_VERSION} started via run-bahmni.sh."
-      return 0
+      started=1
+    else
+      warn "run-bahmni.sh returned an error — falling back to '${DOCKER_COMPOSE} up -d'."
     fi
-    warn "run-bahmni.sh returned an error — falling back to '${DOCKER_COMPOSE} up -d'."
   else
     warn "run-bahmni.sh not found in ${RESTORE_DIR}; using '${DOCKER_COMPOSE} up -d'."
   fi
-  ( cd "$RESTORE_DIR" && as_root $DOCKER_COMPOSE up -d )
-  success "eRegister ${TARGET_VERSION} started via docker compose."
+  if [ "$started" != "1" ]; then
+    ( cd "$RESTORE_DIR" && as_root $DOCKER_COMPOSE up -d )
+    success "eRegister ${TARGET_VERSION} started via docker compose."
+  fi
+  # The reports service is separate (and often profile-gated); start it too so
+  # dashboards/reports are available. Runs regardless of which path launched the
+  # main stack above.
+  start_reports_service
+}
+
+start_reports_service() {
+  # Naming the service explicitly on the CLI enables it even when it's gated
+  # behind a compose 'reports' profile. Non-fatal: a failure only warns.
+  info "Starting the reports service (${REPORTS_SERVICE})…"
+  if ( cd "$RESTORE_DIR" && as_root $DOCKER_COMPOSE up -d "$REPORTS_SERVICE" ); then
+    success "Reports service '${REPORTS_SERVICE}' started."
+  else
+    warn "Could not start reports service '${REPORTS_SERVICE}'; start it manually with '${DOCKER_COMPOSE} up -d ${REPORTS_SERVICE}'."
+  fi
 }
