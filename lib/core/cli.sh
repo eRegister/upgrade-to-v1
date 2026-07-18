@@ -3,7 +3,9 @@
 # lib/core/cli.sh — argument parsing, config resolution, summary
 # Depends on: logging, read_current_version() (lib/upgrade/detect.sh).
 # =============================================================================
-usage() { sed -n '2,40p' "$0" 2>/dev/null || true; }
+# Print the header comment block verbatim: from the line after the opening
+# banner up to the closing one (line-range-free, so the header can grow).
+usage() { sed -n '3,/^####/p' "$0" 2>/dev/null || true; }
 
 parse_args() {
   while [ "$#" -gt 0 ]; do
@@ -34,8 +36,10 @@ print_config() {
   cat >&2 <<EOF
   ${C_DIM}App${C_RESET}            : ${APP_NAME}
   ${C_DIM}Current ver${C_RESET}    : ${current}
-  ${C_DIM}Target ver${C_RESET}     : ${TARGET_VERSION}$( [ -n "$TARGET_REF" ] && echo "  (ref override: ${TARGET_REF})" )
-  ${C_DIM}Refs${C_RESET}           : docker=${TARGET_REF:-$REF_BAHMNI_DOCKER}  config=${TARGET_REF:-$REF_STANDARD_CONFIG}  092=${TARGET_REF:-$REF_CONFIG_092}
+  ${C_DIM}Target ver${C_RESET}     : ${TARGET_VERSION}
+  ${C_DIM}Ref override${C_RESET}   : ${TARGET_REF:-(none — using the per-repo defaults below)}$( [ -n "$TARGET_REF" ] && echo "  (tried in order; per-repo default is the last resort)" )
+  ${C_DIM}Default refs${C_RESET}   : docker=${REF_BAHMNI_DOCKER}  config=${REF_STANDARD_CONFIG}  092=${REF_CONFIG_092}
+  ${C_DIM}     ${C_RESET}            modules=${REF_OPENMRS_MODULES}  impl-interface=${REF_IMPL_INTERFACE}  obs-forms=${REF_OBS_FORMS}
   ${C_DIM}OS / Arch${C_RESET}      : ${OS} / ${ARCH}
   ${C_DIM}Pkg manager${C_RESET}    : ${PKG_MGR:-none}
   ${C_DIM}Install base${C_RESET}   : ${INSTALL_BASE}
