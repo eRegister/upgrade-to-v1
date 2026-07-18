@@ -68,6 +68,7 @@ REF_OBS_FORMS="${EREGISTER_REF_OBS_FORMS:-main}"
 
 # Derived paths (finalized in resolve_config once INSTALL_BASE is known)
 V1_DIR=""             # <base>/v1
+eRegister_HOME=""     # exported alias of V1_DIR, for child processes/scripts
 BACKUP_DIR=""         # <base>/v1/bahmni-backup
 BACKUP_SQL=""         # <base>/v1/bahmni-backup/openmrsdb_backup.sql
 DONE_MARKER=""        # <base>/v1/.eregister-upgrade-complete

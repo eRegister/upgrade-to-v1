@@ -24,6 +24,10 @@ parse_args() {
 
 resolve_config() {
   V1_DIR="${INSTALL_BASE}/v1"
+  # Exported so the restore/run scripts and any child process can find the v1
+  # tree without re-deriving it. Tracks --install-dir, so it is /var/lib/v1
+  # by default and <base>/v1 when the install base is overridden.
+  export eRegister_HOME="$V1_DIR"
   BACKUP_DIR="${V1_DIR}/bahmni-backup"
   BACKUP_SQL="${BACKUP_DIR}/openmrsdb_backup.sql"
   DONE_MARKER="${V1_DIR}/.eregister-upgrade-complete"
@@ -44,6 +48,7 @@ print_config() {
   ${C_DIM}Pkg manager${C_RESET}    : ${PKG_MGR:-none}
   ${C_DIM}Install base${C_RESET}   : ${INSTALL_BASE}
   ${C_DIM}v1 dir${C_RESET}         : ${V1_DIR}
+  ${C_DIM}eRegister_HOME${C_RESET} : ${eRegister_HOME}
   ${C_DIM}Old stack${C_RESET}      : ${OLD_DOCKER_DIR}
   ${C_DIM}EMR container${C_RESET}  : ${EMR_CONTAINER}
   ${C_DIM}Privilege${C_RESET}      : $( [ -n "$SUDO" ] && echo "sudo" || echo "direct" )
