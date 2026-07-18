@@ -9,8 +9,11 @@ CURRENT_VERSION_DEFAULT="0.92"        # assumed version of an existing install
 TARGET_VERSION="v1"
 
 INSTALL_BASE="${EREGISTER_INSTALL_BASE:-/var/lib}"   # default install dir
-# Global ref override: when non-empty, forces this git ref for ALL repos.
-# Empty = use the per-repo defaults below (repos don't share a branch name).
+# Global ref override: a comma-separated preference list tried against EVERY
+# repo, in order, falling back to that repo's default ref below if none exist.
+# Because the repos don't share a branch name, "Bokang-changes,main" resolves to
+# Bokang-changes on the stack repos and main on the asset repos.
+# Empty = use the per-repo defaults below.
 TARGET_REF="${EREGISTER_TARGET_REF:-}"
 ASSUME_YES="${EREGISTER_ASSUME_YES:-0}"
 FORCE="0"
@@ -46,6 +49,11 @@ RAW_BASE="${EREGISTER_RAW_BASE:-https://raw.githubusercontent.com/eRegister/upgr
 REPO_BAHMNI_DOCKER="https://github.com/Lesotho-eRegister-v1/bahmni-docker-ls"
 REPO_STANDARD_CONFIG="https://github.com/Lesotho-eRegister-v1/standard-config-ls"
 REPO_CONFIG_092="https://github.com/eRegister/bahmni_config092"
+# v1 assets cloned alongside the stack under <base>/v1: OpenMRS omods, the
+# implementer-interface build, and the clinical observation form definitions.
+REPO_OPENMRS_MODULES="https://github.com/Lesotho-eRegister-v1/openmrs-v1-modules"
+REPO_IMPL_INTERFACE="https://github.com/Lesotho-eRegister-v1/implementer-interface-release"
+REPO_OBS_FORMS="https://github.com/Lesotho-eRegister-v1/clinical-obs-forms"
 
 # Per-repo git refs (branch/tag/sha). The Lesotho repos have no 'main' branch;
 # their v1 line lives on 'Bokang-changes'. config092 uses 'main'.
@@ -53,6 +61,10 @@ REPO_CONFIG_092="https://github.com/eRegister/bahmni_config092"
 REF_BAHMNI_DOCKER="${EREGISTER_REF_BAHMNI_DOCKER:-Bokang-changes}"
 REF_STANDARD_CONFIG="${EREGISTER_REF_STANDARD_CONFIG:-Bokang-changes}"
 REF_CONFIG_092="${EREGISTER_REF_CONFIG_092:-main}"
+# The three asset repos below do publish 'main'.
+REF_OPENMRS_MODULES="${EREGISTER_REF_OPENMRS_MODULES:-main}"
+REF_IMPL_INTERFACE="${EREGISTER_REF_IMPL_INTERFACE:-main}"
+REF_OBS_FORMS="${EREGISTER_REF_OBS_FORMS:-main}"
 
 # Derived paths (finalized in resolve_config once INSTALL_BASE is known)
 V1_DIR=""             # <base>/v1
