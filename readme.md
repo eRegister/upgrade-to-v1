@@ -4,6 +4,9 @@ To run this script, just copy and paste this line below in your terminal:
 curl -fsSL https://raw.githubusercontent.com/eRegister/upgrade-to-v1/refs/heads/main/install.sh | bash
 ```
 
+!!! warning
+    * the `openmrs-v1-modules` is ~246MB and will add a noticeable pause to the fetch step on a slow network
+
 An example of how to use flags below:
 
 ```bash
@@ -51,3 +54,11 @@ lib/
     ├── rollback.sh              # rollback
     └── postinstall.sh           # post_verify, next_steps
 ```
+
+# Checklist
+    - working superman password. ✅
+    - login locations are loading correctly ✅
+    - able to search for your patients / clients ✅
+    - LabonFHIR 1.3.1 ✅
+    - FHIR2 1.9.0 ✅
+    - DHIS-Connector ✅
