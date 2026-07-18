@@ -24,6 +24,7 @@ fetch_repos() {
   git_clone_or_update "$REPO_BAHMNI_DOCKER"   "${V1_DIR}/bahmni-docker-ls"    "$REF_BAHMNI_DOCKER"
   git_clone_or_update "$REPO_STANDARD_CONFIG" "${V1_DIR}/standard-config-ls"  "$REF_STANDARD_CONFIG"
   # v1 assets (omods, implementer interface, obs forms) live beside the stack.
+  warn "The openmrs-v1-modules repo is ~246 MB, so this step will pause here for a while on a slow connection. This is expected — let it run."
   git_clone_or_update "$REPO_OPENMRS_MODULES" "${V1_DIR}/openmrs-v1-modules"  "$REF_OPENMRS_MODULES"
   git_clone_or_update "$REPO_IMPL_INTERFACE"  "${V1_DIR}/implementer-interface-release" "$REF_IMPL_INTERFACE"
   git_clone_or_update "$REPO_OBS_FORMS"       "${V1_DIR}/clinical-obs-forms"  "$REF_OBS_FORMS"
