@@ -27,23 +27,67 @@ verify_gpg() {
   success "GPG signature OK: $(basename "$file")"
 }
 
+is_sha() {
+  # A full 40-char hex object id — ls-remote can't match it as a ref pattern,
+  # and 'clone --branch' won't accept it, so both paths special-case it.
+  case "$1" in
+    *[!0-9a-fA-F]*) return 1 ;;
+    *) [ "${#1}" -eq 40 ] ;;
+  esac
+}
+
+resolve_ref() {
+  # resolve_ref <repo_url> <candidate>... — echo the first candidate that the
+  # remote actually publishes (as a branch or a tag); non-zero if none match.
+  # Lets one --target-ref span repos that don't share a branch name.
+  local url="$1"; shift
+  local c
+  for c in "$@"; do
+    [ -n "$c" ] || continue
+    if is_sha "$c"; then printf '%s' "$c"; return 0; fi
+    if git ls-remote --exit-code "$url" "refs/heads/${c}" "refs/tags/${c}" >/dev/null 2>&1; then
+      printf '%s' "$c"; return 0
+    fi
+  done
+  return 1
+}
+
 git_clone_or_update() {
   # Idempotent clone; verifies the remote and checks out the requested ref.
-  # git_clone_or_update <repo_url> <dest_dir> <ref>
-  # A non-empty global TARGET_REF overrides the per-repo <ref>.
-  local url="$1" dest="$2" ref="${TARGET_REF:-$3}"
+  # git_clone_or_update <repo_url> <dest_dir> <default_ref>
+  # A non-empty global TARGET_REF (comma-separated preference list) is tried
+  # first, in order; <default_ref> is the last resort. The ref is resolved
+  # against the remote BEFORE cloning, so a bad ref fails loudly here rather
+  # than silently landing on the repo's default branch.
+  local url="$1" dest="$2" default_ref="$3" ref
+  if [ -n "$TARGET_REF" ]; then
+    local cands
+    IFS=',' read -r -a cands <<< "$TARGET_REF"
+    ref="$(resolve_ref "$url" "${cands[@]}" "$default_ref")" || {
+      error "None of '${TARGET_REF}' (nor the default '${default_ref}') exist on ${url}."
+      return 1
+    }
+    [ "$ref" = "${cands[0]}" ] || warn "${url}: no '${cands[0]}'; using '${ref}' instead."
+  else
+    ref="$default_ref"
+  fi
   [ -n "$ref" ] || { error "No git ref specified for ${url}."; return 1; }
+
   if [ -d "$dest/.git" ]; then
     info "Repo exists, updating: ${dest} @ ${ref}"
     as_root git -C "$dest" remote set-url origin "$url"
     as_root git -C "$dest" fetch --depth 1 origin "$ref"
     as_root git -C "$dest" checkout -f "$ref"
     as_root git -C "$dest" reset --hard "origin/${ref}" 2>/dev/null || true
+  elif is_sha "$ref"; then
+    # --branch rejects a raw SHA, so clone in full and check the commit out.
+    info "Cloning ${url} @ ${ref} (full clone; SHA pin) -> ${dest}"
+    as_root git clone "$url" "$dest"
+    as_root git -C "$dest" checkout -f "$ref"
   else
     info "Cloning ${url} @ ${ref} -> ${dest}"
-    as_root git clone --depth 1 --branch "$ref" "$url" "$dest" 2>/dev/null \
-      || as_root git clone "$url" "$dest"
+    as_root git clone --depth 1 --branch "$ref" "$url" "$dest"
   fi
   [ -d "$dest/.git" ] || { error "Clone failed: ${dest}"; return 1; }
-  success "Ready: ${dest} @ $(as_root git -C "$dest" rev-parse --short HEAD)"
+  success "Ready: ${dest} @ ${ref} ($(as_root git -C "$dest" rev-parse --short HEAD))"
 }
