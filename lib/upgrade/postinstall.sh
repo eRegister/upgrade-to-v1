@@ -12,7 +12,23 @@ post_verify() {
   [ -d "${BACKUP_DIR}/bahmni_config/.git" ]   || { error "bahmni_config missing."; ok=0; }
   [ "$ok" = "1" ] || return 1
   as_root touch "$DONE_MARKER"
+  persist_env
   success "Verification passed."
+}
+
+persist_env() {
+  # Persist eRegister_HOME beyond this process so future shell sessions (and
+  # scripts run from them) can find the v1 tree. profile.d only reaches login
+  # shells — daemons/cron jobs still need the path passed explicitly.
+  local profile="/etc/profile.d/eregister.sh"
+  if [ ! -d /etc/profile.d ]; then
+    warn "No /etc/profile.d on this system; eRegister_HOME not persisted."
+    return 0
+  fi
+  printf '# Written by the eRegister v1 installer — re-running it overwrites this file.\nexport eRegister_HOME=%q\n' "$eRegister_HOME" \
+    | as_root tee "$profile" >/dev/null
+  as_root chmod 0644 "$profile"
+  success "eRegister_HOME persisted to ${profile} (takes effect in new login shells)."
 }
 
 next_steps() {
@@ -33,6 +49,7 @@ ${C_OK}════════════════════════�
   Install dir : ${V1_DIR}
   DB backup   : ${BACKUP_SQL}${backup_size}
   v1 stack    : ${V1_DIR}/bahmni-docker-ls
+  Environment : eRegister_HOME=${eRegister_HOME} (persisted in /etc/profile.d/eregister.sh)
 
   The v1 stack has been started (run-bahmni.sh, or '${dc} up -d').
 
