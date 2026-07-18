@@ -4,8 +4,9 @@ To run this script, just copy and paste this line below in your terminal:
 curl -fsSL https://raw.githubusercontent.com/eRegister/upgrade-to-v1/refs/heads/main/install.sh | bash
 ```
 
-!!! warning
-    * the `openmrs-v1-modules` is ~246MB and will add a noticeable pause to the fetch step on a slow network
+> [!WARNING]
+> The `openmrs-v1-modules` repo is ~246 MB, so the "Fetching v1 sources" step
+> will pause there for a while on a slow connection. This is expected — let it run.
 
 An example of how to use flags below:
 
