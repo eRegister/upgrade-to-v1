@@ -14,7 +14,14 @@
 #                        Also enabled with: EREGISTER_ASSUME_YES=1
 #   --force              Re-run upgrade even if a completed v1 marker exists.
 #   --install-dir DIR    Override install base (default: /var/lib).
-#   --target-ref REF     Git ref/tag/commit to check out for the repos (default: main).
+#   --target-ref REF[,REF...]
+#                        Git ref(s)/tag(s)/commit(s) to check out for the repos.
+#                        Tried in order against each repo; the first one that
+#                        exists on that remote wins, and the repo's own default
+#                        ref is the last resort. The repos do not share a branch
+#                        name, so a list is usually what you want:
+#                          --target-ref Bokang-changes,main
+#                        Default: empty (each repo uses its own default ref).
 #   --no-color           Disable ANSI colors.
 #   -h, --help           Show help and exit.
 #
@@ -161,7 +168,7 @@ main() {
   shutdown_old_stack
 
   # --- bring in v1 sources & 0.92 config ----------------------------------
-  confirm_step "Clone the v1 source repos and 0.92 config into ${V1_DIR}"
+  confirm_step "Clone the v1 source repos, asset repos and 0.92 config into ${V1_DIR}"
   fetch_repos
 
   # --- restore data into v1 ----------------------------------------------
