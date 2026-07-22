@@ -25,11 +25,21 @@
 #   --no-color           Disable ANSI colors.
 #   -h, --help           Show help and exit.
 #
+#   After a successful upgrade, the installer offers to schedule a job that
+#   periodically pulls the v1 asset/config repos (standard-config-ls,
+#   implementer-interface-release, openmrs-v1-modules, clinical-obs-forms) via a
+#   systemd timer, or an /etc/cron.d entry where systemd is absent. Control it:
+#     EREGISTER_AUTO_PULL=0            Disable the feature entirely.
+#     EREGISTER_AUTO_PULL_ONCALENDAR   systemd OnCalendar (default: '*-*-* 02:30:00').
+#     EREGISTER_AUTO_PULL_CRON         cron schedule    (default: '30 2 * * *').
+#   The standalone updater is installed to /usr/local/bin/eregister-autopull.sh
+#   and can be run by hand for a one-off sync.
+#
 # DESIGN NOTES
 #   * Modules live under lib/, grouped by concern and sourced by this file:
 #       lib/core/    config, logging, traps, prompt, cli
 #       lib/system/  platform, privilege, deps
-#       lib/upgrade/ verify, detect, backup, migrate, rollback, postinstall
+#       lib/upgrade/ verify, detect, backup, migrate, rollback, postinstall, autopull
 #     Override the lib location with EREGISTER_LIB_DIR (e.g. for system install).
 #   * Because functions now live in separate files, this is NO LONGER safe to
 #     `curl | bash` directly — clone/download the whole repo and run ./install.sh.
@@ -62,6 +72,7 @@ EREGISTER_MODULES=(
   upgrade/migrate.sh
   upgrade/rollback.sh
   upgrade/postinstall.sh
+  upgrade/autopull.sh
 )
 
 # -----------------------------------------------------------------------------
@@ -157,10 +168,21 @@ main() {
   ensure_dir "$BACKUP_DIR" "bahmni-backup folder"
 
   # --- backup BEFORE touching anything ------------------------------------
+  # Only run the backup (and its password prompt) when the old EMR container is
+  # actually up. With no container there is nothing to dump — treat it as a
+  # fresh install and skip straight on rather than failing. Checking here also
+  # avoids prompting for a DB password we would never use (which would abort a
+  # --yes/CI run at prompt_db_password before we ever reach take_backup).
   step "Backup"
-  confirm_step "Take a MySQL backup of '${DB_NAME}' from container ${EMR_CONTAINER} into ${BACKUP_SQL}"
-  prompt_db_password
-  take_backup
+  if emr_container_running; then
+    confirm_step "Take a MySQL backup of '${DB_NAME}' from container ${EMR_CONTAINER} into ${BACKUP_SQL}"
+    prompt_db_password
+    take_backup
+  else
+    warn "EMR container '${EMR_CONTAINER}' is not running — no old instance to back up."
+    warn "Skipping the backup step and continuing as a fresh install (nothing to migrate)."
+    BACKUP_SKIPPED="1"
+  fi
 
   # --- stop old stack (rollback armed from here) --------------------------
   step "Migration"
@@ -183,6 +205,17 @@ main() {
   confirm_step "Run post-install verification and finalize the upgrade"
   post_verify
   UPGRADE_COMPLETE="1"   # disarms rollback in the error trap
+
+  # --- schedule automatic repo updates (optional, post-completion) --------
+  # Declining here is NOT an abort: the upgrade is already done, so this is a
+  # plain confirm (not confirm_step, which would roll back / exit). Honors
+  # --yes and EREGISTER_AUTO_PULL=0.
+  if [ "$AUTO_PULL" = "1" ] && confirm "Install the auto-update job that periodically pulls the v1 asset/config repos?"; then
+    install_auto_pull
+  else
+    info "Skipping auto-update scheduling. Enable it later by re-running with --force, or add your own cron/timer entry for ${AUTO_PULL_SCRIPT}."
+  fi
+
   next_steps
   success "Done."
 }

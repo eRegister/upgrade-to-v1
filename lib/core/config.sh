@@ -45,6 +45,22 @@ REPORTS_SERVICE="${EREGISTER_REPORTS_SERVICE:-reports}"
 # same default in install.sh / ocl-fix.sh).
 RAW_BASE="${EREGISTER_RAW_BASE:-https://raw.githubusercontent.com/eRegister/upgrade-to-v1/refs/heads/main}"
 
+# --- Auto-update (periodic git pull of the v1 asset/config repos) ------------
+# After a successful upgrade, a scheduled job keeps the asset/config repos
+# (standard-config-ls, implementer-interface-release, openmrs-v1-modules,
+# clinical-obs-forms) in sync with their remotes. Implemented as a systemd timer
+# where systemd is available, else an /etc/cron.d entry. See lib/upgrade/autopull.sh.
+AUTO_PULL="${EREGISTER_AUTO_PULL:-1}"                 # 0 disables the whole feature
+# Schedule. systemd uses OnCalendar; cron uses a 5-field crontab expression.
+# Defaults are kept roughly equivalent (daily at 02:30, local time).
+AUTO_PULL_ONCALENDAR="${EREGISTER_AUTO_PULL_ONCALENDAR:-*-*-* 02:30:00}"
+AUTO_PULL_CRON="${EREGISTER_AUTO_PULL_CRON:-30 2 * * *}"
+# Where the standalone updater is installed, where it logs, and the unit/file
+# basename shared by the systemd units and the cron.d file.
+AUTO_PULL_SCRIPT="${EREGISTER_AUTO_PULL_SCRIPT:-/usr/local/bin/eregister-autopull.sh}"
+AUTO_PULL_LOG="${EREGISTER_AUTO_PULL_LOG:-/var/log/eregister-autopull.log}"
+AUTO_PULL_UNIT="${EREGISTER_AUTO_PULL_UNIT:-eregister-autopull}"
+
 # Source repositories
 REPO_BAHMNI_DOCKER="https://github.com/Lesotho-eRegister-v1/bahmni-docker-ls"
 REPO_STANDARD_CONFIG="https://github.com/Lesotho-eRegister-v1/standard-config-ls"
@@ -83,3 +99,7 @@ SUDO=""
 DOCKER_COMPOSE=""     # "docker compose" or "docker-compose"
 OLD_STACK_STOPPED="0"
 UPGRADE_COMPLETE="0"
+# Set to 1 when the DB backup is skipped because no old EMR container was
+# running (i.e. a fresh install with nothing to migrate). Downstream steps
+# (restore, verify) read this to demote their own failures to warnings.
+BACKUP_SKIPPED="0"

@@ -53,8 +53,30 @@ lib/
     ├── backup.sh                # ensure_dir, take_backup
     ├── migrate.sh               # shutdown_old_stack, fetch_repos, run_restore
     ├── rollback.sh              # rollback
-    └── postinstall.sh           # post_verify, next_steps
+    ├── postinstall.sh           # post_verify, next_steps
+    └── autopull.sh              # install_auto_pull (systemd timer / cron.d)
 ```
+
+# Keeping the v1 repos up to date
+
+After a successful upgrade the installer offers to schedule a job that
+periodically `git pull`s the asset/config repos — `standard-config-ls`,
+`implementer-interface-release`, `openmrs-v1-modules`, and `clinical-obs-forms`
+— so a deployed instance tracks their remotes without a full re-run.
+
+- On systemd hosts (Ubuntu default) it installs `eregister-autopull.timer` +
+  `.service`; elsewhere it writes `/etc/cron.d/eregister-autopull`. Both run the
+  same standalone updater at `/usr/local/bin/eregister-autopull.sh`.
+- Each repo is fast-forwarded onto its tracked branch (`fetch --depth 1` +
+  `reset --hard origin/<branch>`); a repo with uncommitted local changes is
+  left untouched. `bahmni-docker-ls` and the 0.92 `bahmni_config` are **not**
+  touched — they stay pinned to the deployed release.
+- Run a one-off sync by hand: `sudo /usr/local/bin/eregister-autopull.sh`
+  (log: `/var/log/eregister-autopull.log`).
+
+Tune or disable via env vars: `EREGISTER_AUTO_PULL=0` (off),
+`EREGISTER_AUTO_PULL_ONCALENDAR` (systemd schedule, default `*-*-* 02:30:00`),
+`EREGISTER_AUTO_PULL_CRON` (cron schedule, default `30 2 * * *`).
 
 # Checklist
     - working superman password. ✅
