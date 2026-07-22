@@ -35,6 +35,26 @@ fetch_repos() {
 run_restore() {
   step "Restoring data into v1"
   local restore_script="${RESTORE_DIR}/restore_bahmni_standard.sh"
+
+  # No backup was taken (no old EMR container — a fresh install). There is
+  # nothing to migrate, so we still ATTEMPT the restore (an existing dump, if
+  # any, is honored) but never abort: missing artifacts or a restore error only
+  # warn and continue. The normal path below stays strict.
+  if [ "$BACKUP_SKIPPED" = "1" ]; then
+    if [ ! -d "$RESTORE_DIR" ] || [ ! -f "$restore_script" ]; then
+      warn "No restore artifacts under ${RESTORE_DIR}; skipping restore (no backup was taken)."
+      return 0
+    fi
+    as_root chmod +x "$restore_script" || true
+    info "Attempting restore (no backup was taken; any failure is non-fatal)…"
+    if ( cd "$RESTORE_DIR" && as_root ./restore_bahmni_standard.sh "$BACKUP_DIR" ); then
+      success "Restore completed."
+    else
+      warn "Restore did not complete; continuing anyway (no backup was taken to restore)."
+    fi
+    return 0
+  fi
+
   [ -d "$RESTORE_DIR" ] || { error "Missing ${RESTORE_DIR}."; return 1; }
   [ -f "$restore_script" ] || { error "Restore script not found: ${restore_script}"; return 1; }
   as_root chmod +x "$restore_script" || true

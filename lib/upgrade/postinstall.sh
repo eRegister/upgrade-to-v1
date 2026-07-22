@@ -3,13 +3,27 @@
 # lib/upgrade/postinstall.sh — post-install verification & "what to do next"
 # Depends on: logging, as_root() (privilege).
 # =============================================================================
+# A failed post-install check. Normally fatal — it records the failure in the
+# caller's 'ok' so post_verify returns non-zero. But when the backup was skipped
+# (fresh install, no old EMR container) every check is advisory: warn and keep
+# going so the upgrade still finalizes. Relies on being called from post_verify
+# (bash dynamic scope) to see and flip its local 'ok'.
+verify_fail() {
+  if [ "${BACKUP_SKIPPED:-0}" = "1" ]; then
+    warn "$1 (non-fatal: no backup was taken)"
+  else
+    error "$1"
+    ok=0
+  fi
+}
+
 post_verify() {
   step "Post-install verification"
   local ok=1
-  [ -s "$BACKUP_SQL" ]                        || { error "Missing DB backup."; ok=0; }
-  [ -d "${V1_DIR}/bahmni-docker-ls/.git" ]    || { error "bahmni-docker-ls missing."; ok=0; }
-  [ -d "${V1_DIR}/standard-config-ls/.git" ]  || { error "standard-config-ls missing."; ok=0; }
-  [ -d "${BACKUP_DIR}/bahmni_config/.git" ]   || { error "bahmni_config missing."; ok=0; }
+  [ -s "$BACKUP_SQL" ]                        || verify_fail "Missing DB backup."
+  [ -d "${V1_DIR}/bahmni-docker-ls/.git" ]    || verify_fail "bahmni-docker-ls missing."
+  [ -d "${V1_DIR}/standard-config-ls/.git" ]  || verify_fail "standard-config-ls missing."
+  [ -d "${BACKUP_DIR}/bahmni_config/.git" ]   || verify_fail "bahmni_config missing."
   [ "$ok" = "1" ] || return 1
   as_root touch "$DONE_MARKER"
   persist_env
@@ -64,6 +78,14 @@ ${C_OK}════════════════════════�
          curl -fsSL ${RAW_BASE}/ocl-fix.sh | bash
        (or, from the upgrade repo:  ./ocl-fix.sh)
     5. Once verified, the old install in ${OLD_DOCKER_DIR} can be archived.
+
+  Auto-updates:
+    If you accepted the auto-update step, the asset/config repos
+    (standard-config-ls, implementer-interface-release, openmrs-v1-modules,
+    clinical-obs-forms) are pulled on a schedule by ${AUTO_PULL_SCRIPT}
+    (${C_DIM}systemd: ${AUTO_PULL_UNIT}.timer, or /etc/cron.d/${AUTO_PULL_UNIT}${C_RESET}).
+    Run a sync now:  ${AUTO_PULL_SCRIPT}
+    Log:             ${AUTO_PULL_LOG}
 
   Re-running this script is safe (idempotent). Use --force to redo a
   completed upgrade.

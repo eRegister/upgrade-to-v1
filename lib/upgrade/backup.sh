@@ -15,12 +15,21 @@ ensure_dir() {
   fi
 }
 
+# True when the old EMR container is up and can be dumped. Callers use this to
+# decide whether the backup step runs at all (a fresh install has no container).
+emr_container_running() {
+  docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${EMR_CONTAINER}$"
+}
+
 take_backup() {
   log ""
   info "taking backup first…….."
-  if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${EMR_CONTAINER}$"; then
-    error "EMR container '${EMR_CONTAINER}' is not running; cannot dump ${DB_NAME}."
-    return 1
+  # No running EMR container = nothing to back up (fresh install). Don't abort:
+  # flag it and let the run continue; restore/verify adapt via BACKUP_SKIPPED.
+  if ! emr_container_running; then
+    warn "EMR container '${EMR_CONTAINER}' is not running — skipping backup (fresh install, nothing to migrate)."
+    BACKUP_SKIPPED="1"
+    return 0
   fi
   if [ -f "$BACKUP_SQL" ] && [ "$FORCE" != "1" ]; then
     warn "Backup already exists: ${BACKUP_SQL} (use --force to overwrite). Keeping it."
