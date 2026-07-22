@@ -22,6 +22,10 @@ USE_COLOR="auto"
 # Existing (0.92) deployment layout
 OLD_DOCKER_DIR="${EREGISTER_OLD_DOCKER_DIR:-${HOME}/bahmni_docker}"
 EMR_CONTAINER="${EREGISTER_EMR_CONTAINER:-bahmni_docker-emr-service-1}"
+# Fallback container name tried when EMR_CONTAINER isn't running. Some
+# deployments name the service with underscores instead of the compose default
+# (hyphen). If neither is up, the installer asks the user for the name.
+EMR_CONTAINER_ALT="${EREGISTER_EMR_CONTAINER_ALT:-bahmni_docker_emr_service_1}"
 
 # OpenMRS DB credentials (used inside the running EMR container for the dump).
 # The password is NOT hard-coded: it is prompted interactively at runtime, or

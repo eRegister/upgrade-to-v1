@@ -15,19 +15,62 @@ ensure_dir() {
   fi
 }
 
-# True when the old EMR container is up and can be dumped. Callers use this to
-# decide whether the backup step runs at all (a fresh install has no container).
-emr_container_running() {
-  docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${EMR_CONTAINER}$"
+# True when a container with EXACTLY the given name is running.
+container_running() {
+  docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${1}$"
+}
+
+# Resolve which container hosts the EMR service and set EMR_CONTAINER to it.
+# Tries the configured name, then the known alternate (EMR_CONTAINER_ALT). If
+# neither is up, asks the user for the running service's name — unless we're
+# non-interactive, in which case we can't ask and simply report failure.
+# Returns 0 with EMR_CONTAINER pointing at a RUNNING container, or 1 when none
+# is available / the user entered nothing (caller then skips the backup).
+resolve_emr_container() {
+  local name
+  for name in "$EMR_CONTAINER" "$EMR_CONTAINER_ALT"; do
+    if [ -n "$name" ] && container_running "$name"; then
+      EMR_CONTAINER="$name"
+      info "Found running EMR container: ${EMR_CONTAINER}"
+      return 0
+    fi
+  done
+
+  warn "None of the known EMR docker services are running:"
+  warn "  • ${EMR_CONTAINER}"
+  warn "  • ${EMR_CONTAINER_ALT}"
+
+  # Can't prompt without a TTY (or when auto-confirming); skip rather than hang.
+  if [ "$ASSUME_YES" = "1" ] || [ ! -r /dev/tty ]; then
+    warn "Non-interactive (or no TTY): cannot ask for a container name — skipping backup."
+    return 1
+  fi
+
+  local entered=""
+  printf '%sEnter the name of the running docker service hosting the EMR (leave blank to skip): %s' \
+    "$C_WARN" "$C_RESET" >/dev/tty
+  read -r entered </dev/tty || entered=""
+  if [ -z "$entered" ]; then
+    warn "Nothing entered — proceeding to the next step without a backup."
+    return 1
+  fi
+  if ! container_running "$entered"; then
+    warn "Container '${entered}' is not running — proceeding to the next step without a backup."
+    return 1
+  fi
+  EMR_CONTAINER="$entered"
+  success "Using EMR container: ${EMR_CONTAINER}"
+  return 0
 }
 
 take_backup() {
   log ""
   info "taking backup first…….."
-  # No running EMR container = nothing to back up (fresh install). Don't abort:
-  # flag it and let the run continue; restore/verify adapt via BACKUP_SKIPPED.
-  if ! emr_container_running; then
-    warn "EMR container '${EMR_CONTAINER}' is not running — skipping backup (fresh install, nothing to migrate)."
+  # Defensive: resolve_emr_container should have set EMR_CONTAINER to a running
+  # container before we get here. If it somehow isn't (e.g. stopped in between),
+  # don't abort — flag it and let the run continue as a fresh install.
+  if ! container_running "$EMR_CONTAINER"; then
+    warn "EMR container '${EMR_CONTAINER}' is not running — skipping backup (nothing to migrate)."
     BACKUP_SKIPPED="1"
     return 0
   fi

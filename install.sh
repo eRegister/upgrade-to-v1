@@ -168,19 +168,20 @@ main() {
   ensure_dir "$BACKUP_DIR" "bahmni-backup folder"
 
   # --- backup BEFORE touching anything ------------------------------------
-  # Only run the backup (and its password prompt) when the old EMR container is
-  # actually up. With no container there is nothing to dump — treat it as a
-  # fresh install and skip straight on rather than failing. Checking here also
+  # Resolve a running EMR container first (configured name, then the known
+  # alternate, then ask the user). Only when one is found do we run the backup
+  # and its password prompt — with no container there is nothing to dump, so we
+  # treat it as a fresh install and skip straight on. Resolving up front also
   # avoids prompting for a DB password we would never use (which would abort a
   # --yes/CI run at prompt_db_password before we ever reach take_backup).
   step "Backup"
-  if emr_container_running; then
+  if resolve_emr_container; then
     confirm_step "Take a MySQL backup of '${DB_NAME}' from container ${EMR_CONTAINER} into ${BACKUP_SQL}"
     prompt_db_password
     take_backup
   else
-    warn "EMR container '${EMR_CONTAINER}' is not running — no old instance to back up."
-    warn "Skipping the backup step and continuing as a fresh install (nothing to migrate)."
+    warn "No running EMR container to back up — continuing as a fresh install (nothing to migrate)."
+    warn "However, if at a later stage I find the back in ${eRegister_HOME}, i'll use it  ."
     BACKUP_SKIPPED="1"
   fi
 
