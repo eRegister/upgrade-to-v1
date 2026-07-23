@@ -61,8 +61,9 @@ lib/
 
 After a successful upgrade the installer offers to schedule a job that
 periodically `git pull`s the asset/config repos — `standard-config-ls`,
-`implementer-interface-release`, `openmrs-v1-modules`, and `clinical-obs-forms`
-— so a deployed instance tracks their remotes without a full re-run.
+`implementer-interface-release`, `openmrs-v1-modules`, `clinical-obs-forms`,
+and `dhisconnector_mappings_v1` — so a deployed instance tracks their remotes
+without a full re-run.
 
 - On systemd hosts (Ubuntu default) it installs `eregister-autopull.timer` +
   `.service`; elsewhere it writes `/etc/cron.d/eregister-autopull`. Both run the
