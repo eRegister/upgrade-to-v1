@@ -20,17 +20,39 @@ container_running() {
   docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${1}$"
 }
 
+# Turn a literal container name into an anchored regex that treats '-' and '_'
+# as interchangeable separators, so compose v1 (underscore), v2 (hyphen) and
+# mixed variants all match the same configured name. For example
+# 'bahmni_docker-emr-service-1' also matches 'bahmni_docker_emr_service_1' and
+# 'bahmni_docker_emr-service_1'. Dots are escaped; container names carry no
+# other regex metacharacters.
+container_name_regex() {
+  local re
+  re="$(printf '%s' "$1" | sed -e 's/\./\\./g' -e 's/[-_]/[-_]/g')"
+  printf '^%s$' "$re"
+}
+
+# Echo the name of the first RUNNING container matching the given name with
+# separators treated flexibly (see container_name_regex). Empty output when
+# nothing matches.
+find_running_container() {
+  docker ps --format '{{.Names}}' 2>/dev/null | grep -m1 -E "$(container_name_regex "$1")"
+}
+
 # Resolve which container hosts the EMR service and set EMR_CONTAINER to it.
-# Tries the configured name, then the known alternate (EMR_CONTAINER_ALT). If
-# neither is up, asks the user for the running service's name — unless we're
-# non-interactive, in which case we can't ask and simply report failure.
-# Returns 0 with EMR_CONTAINER pointing at a RUNNING container, or 1 when none
-# is available / the user entered nothing (caller then skips the backup).
+# Tries the configured name, then the known alternate (EMR_CONTAINER_ALT), each
+# matched with flexible separators so hyphen/underscore variants are found
+# automatically. If neither is up, asks the user for the running service's name
+# — unless we're non-interactive, in which case we can't ask and simply report
+# failure. Returns 0 with EMR_CONTAINER pointing at a RUNNING container, or 1
+# when none is available / the user entered nothing (caller then skips backup).
 resolve_emr_container() {
-  local name
+  local name match
   for name in "$EMR_CONTAINER" "$EMR_CONTAINER_ALT"; do
-    if [ -n "$name" ] && container_running "$name"; then
-      EMR_CONTAINER="$name"
+    [ -n "$name" ] || continue
+    match="$(find_running_container "$name")"
+    if [ -n "$match" ]; then
+      EMR_CONTAINER="$match"
       info "Found running EMR container: ${EMR_CONTAINER}"
       return 0
     fi
